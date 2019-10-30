@@ -3,17 +3,33 @@ package com.smsglobal.transport;
 import com.google.gson.Gson;
 import com.smsglobal.client.Message;
 import com.smsglobal.client.Transport;
+
+
+import org.apache.http.Header;
+import org.apache.http.HttpHost;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.fluent.Content;
 import org.apache.http.client.fluent.Request;
+
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.utils.URIBuilder;
+import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.entity.ContentType;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
+
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Marshaller;
+import java.io.IOException;
 import java.io.StringWriter;
+
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.InvalidKeyException;
@@ -33,28 +49,42 @@ public class RestTransport implements Transport {
     private String version;
     private String path;
     private int port;
+    private SSLConnectionSocketFactory sslConnectionSocketFactory;
 
-    public RestTransport() {
+
+    public RestTransport() throws IOException {
+
     }
 
-    public RestTransport(String key, String secret, String baseUrl, int port) throws URISyntaxException {
+    public RestTransport(String key, String secret, String baseUrl, int port,SSLConnectionSocketFactory sslsf) throws URISyntaxException, IOException {
         this.key = key;
         this.secret = secret;
         this.port = port;
+        this.sslConnectionSocketFactory = sslsf;
         setBaseUrl(baseUrl);
+
     }
+
+
 
     public String sendMessage(Message message) throws Exception {
         long timestamp = System.currentTimeMillis() / 1000L;
         int nonce = new Random().nextInt();
         String mac = getMac("POST", "/sms/", timestamp, nonce);
         String messageXml = toXml(message);
-        Content response = Request.Post(baseUrl + path)
-                .bodyString(messageXml, ContentType.APPLICATION_XML)
-                .setHeader("Accept", "application/xml")
-                .setHeader("Authorization", getAuthHeader(mac, timestamp, nonce))
-                .execute().returnContent();
-        return response.asString();
+
+        CloseableHttpClient httpclient = HttpClients.custom()
+                .setSSLSocketFactory(sslConnectionSocketFactory)
+                .build();
+
+        HttpPost httpPost =  new HttpPost(baseUrl +path);
+        httpPost.setHeader("Accept", "application/xml");
+        httpPost.setHeader("Authorization", getAuthHeader(mac, timestamp, nonce));
+        StringEntity entity =new StringEntity(messageXml);
+        entity.setContentType("application/xml");
+        httpPost.setEntity(entity);
+        CloseableHttpResponse response = httpclient.execute(httpPost);
+        return response.toString();
     }
 
     public String toXml(Message message) throws JAXBException {
