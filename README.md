@@ -1,4 +1,4 @@
-#...... SMSGlobal Java Client
+# SMSGlobal Java Client
 
 ## Requirements
 
