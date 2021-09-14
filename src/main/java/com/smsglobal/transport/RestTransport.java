@@ -1,6 +1,5 @@
 package com.smsglobal.transport;
 
-import com.google.gson.Gson;
 import com.smsglobal.client.Message;
 import com.smsglobal.client.Transport;
 
@@ -95,11 +94,6 @@ public class RestTransport implements Transport {
         StringWriter stringWriter = new StringWriter();
         marshaller.marshal(message, stringWriter);
         return stringWriter.toString();
-    }
-
-    public String toJson(Message message) {
-        Gson gson = new Gson();
-        return gson.toJson(message);
     }
 
     public void extractVersion() {

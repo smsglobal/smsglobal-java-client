@@ -18,9 +18,7 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.URISyntaxException;
 
-import static org.hamcrest.CoreMatchers.isA;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
 
 /**
  * REST transport test suite
@@ -98,15 +96,6 @@ public class RestTransportTest {
                 "    <message>Test message</message>\n" +
                 "    <origin>1111</origin>\n" +
                 "</message>\n";
-        assertEquals(expected, actual);
-    }
-
-    @Test
-    public void toJson() throws Exception {
-        RestTransport transport = new RestTransport();
-        Message message = new Message("1111", "2222", "Test message");
-        String actual = transport.toJson(message);
-        String expected = "{\"origin\":\"1111\",\"destination\":\"2222\",\"message\":\"Test message\"}";
         assertEquals(expected, actual);
     }
 
