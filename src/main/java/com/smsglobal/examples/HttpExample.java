@@ -1,6 +1,5 @@
 package com.smsglobal.examples;
 
-import com.smsglobal.client.Client;
 import com.smsglobal.client.Message;
 import com.smsglobal.transport.HttpTransport;
 
@@ -9,13 +8,11 @@ import com.smsglobal.transport.HttpTransport;
  */
 public class HttpExample {
 
-    public static void main(String [ ] args) throws Exception {
-        Message message = new Message("SGTest", "614xx", "Build url test");
-        HttpTransport httpTransport = new HttpTransport("xx", "xx", "https://www.smsglobal.com/http-api.php");
+    public static void main(final String[] args) throws Exception {
+        final Message message = new Message("SGTest", "614xx", "Build url test");
+        final HttpTransport httpTransport = new HttpTransport("xx", "xx", "https://www.smsglobal.com/http-api.php");
         System.out.println(httpTransport.buildUrl(message));
-        Client client = new Client(httpTransport);
-        String response = client.sendMessage(message);
+        final String response = httpTransport.sendMessage(message);
         System.out.println(response);
     }
-
 }
