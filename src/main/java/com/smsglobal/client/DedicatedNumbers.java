@@ -1,11 +1,26 @@
 package com.smsglobal.client;
 
-import javax.xml.bind.annotation.XmlAccessType;
-import javax.xml.bind.annotation.XmlAccessorType;
-import javax.xml.bind.annotation.XmlRootElement;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
-@XmlAccessorType(XmlAccessType.FIELD)
-@XmlRootElement(name = "dedicatedNumbers")
+import java.util.List;
+
 public class DedicatedNumbers {
 
+    @JsonProperty("dedicatedNumbers")
+    protected List<String> dedicatedNumbers;
+
+    public List<String> getDedicatedNumbers() {
+        return this.dedicatedNumbers;
+    }
+
+    public void setDedicatedNumbers(final List<String> dedicatedNumbers) {
+        this.dedicatedNumbers = dedicatedNumbers;
+    }
+
+    @Override
+    public String toString() {
+        return "DedicatedNumbers{" +
+            "dedicatedNumbers=" + this.dedicatedNumbers +
+            '}';
+    }
 }

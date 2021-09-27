@@ -1,6 +1,5 @@
 package com.smsglobal.transport;
 
-import com.smsglobal.client.Message;
 import org.junit.Test;
 
 import java.net.URISyntaxException;
@@ -44,18 +43,5 @@ public class RestTransportTest {
         assertEquals(
             "MAC id=\"945a7aca9f05a78a194b77f76c6bb653\", ts=\"1471398353\", nonce=\"1174249\", mac=\"iX34qsNi2hqcoeNVtA/W5D+Hj6eMO3mIThfcYNJPaPM=\"",
             authHeader);
-    }
-
-    @Test
-    public void toXml() throws Exception {
-        final Message message = new Message("1111", "2222", "Test message");
-        final String actual = RestTransport.toXml(message);
-        final String expected = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n" +
-            "<message>\n" +
-            "    <origin>1111</origin>\n" +
-            "    <destination>2222</destination>\n" +
-            "    <message>Test message</message>\n" +
-            "</message>\n";
-        assertEquals(expected, actual);
     }
 }

@@ -1,19 +1,15 @@
 package com.smsglobal.client;
 
-import javax.xml.bind.annotation.XmlAccessType;
-import javax.xml.bind.annotation.XmlAccessorType;
-import javax.xml.bind.annotation.XmlElement;
-import javax.xml.bind.annotation.XmlRootElement;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.math.BigDecimal;
 
-@XmlAccessorType(XmlAccessType.FIELD)
-@XmlRootElement(name = "user")
 public class CreditBalance {
 
-    @XmlElement(name = "balance")
+    @JsonProperty("balance")
     protected BigDecimal balance;
 
-    @XmlElement(name = "currency")
+    @JsonProperty("currency")
     protected String currency;
 
     public BigDecimal getBalance() {

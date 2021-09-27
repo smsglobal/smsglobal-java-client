@@ -1,58 +1,56 @@
 package com.smsglobal.client;
 
-import javax.xml.bind.annotation.XmlAccessType;
-import javax.xml.bind.annotation.XmlAccessorType;
-import javax.xml.bind.annotation.XmlElement;
-import javax.xml.bind.annotation.XmlRootElement;
-import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.time.Instant;
 
 /**
  * SMSGlobal Message
  */
-@XmlAccessorType(XmlAccessType.FIELD)
-@XmlRootElement(name = "message")
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class Message {
 
-    @XmlElement(name = "id")
-    protected String id;
-
-    @XmlElement(name = "outgoing_id")
-    protected String outgoingId;
-
-    @XmlElement(name = "origin")
+    @JsonProperty("origin")
     protected String origin;
 
-    @XmlElement(name = "destination")
+    @JsonProperty("destination")
     protected String destination;
 
-    @XmlElement(name = "message")
+    @JsonProperty("message")
     protected String message;
 
-    @XmlElement(name = "isUnicode")
-    protected Boolean unicode;
-
-    @XmlElement(name = "status")
-    protected MessageStatus status;
-
-    @XmlJavaTypeAdapter(InstantXmlAdapter.class)
-    @XmlElement(name = "dateTime")
-    protected Instant dateTime;
-
-    @XmlElement(name = "isMultipart")
-    protected Boolean multipart;
-
-    @XmlElement(name = "partNumber")
-    protected Integer partNumber;
-
-    @XmlElement(name = "totalParts")
-    protected Integer totalParts;
-
-    @XmlElement(name = "notifyUrl")
+    @JsonProperty("notifyUrl")
     protected String notifyUrl;
 
-    @XmlElement(name = "incomingUrl")
+    @JsonProperty("incomingUrl")
     protected String incomingUrl;
+
+    @JsonProperty("id")
+    protected String id;
+
+    @JsonProperty("outgoing_id")
+    protected String outgoingId;
+
+    @JsonProperty("isUnicode")
+    protected Boolean unicode;
+
+    @JsonProperty("status")
+    protected MessageStatus status;
+
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "uuuu-MM-dd HH:mm:ss Z")
+    @JsonProperty("dateTime")
+    protected Instant dateTime;
+
+    @JsonProperty("isMultipart")
+    protected Boolean multipart;
+
+    @JsonProperty("partNumber")
+    protected Integer partNumber;
+
+    @JsonProperty("totalParts")
+    protected Integer totalParts;
 
     public Message() {
     }
@@ -61,22 +59,6 @@ public class Message {
         this.origin = origin;
         this.destination = destination;
         this.message = message;
-    }
-
-    public String getId() {
-        return this.id;
-    }
-
-    public void setId(final String id) {
-        this.id = id;
-    }
-
-    public String getOutgoingId() {
-        return this.outgoingId;
-    }
-
-    public void setOutgoingId(final String outgoingId) {
-        this.outgoingId = outgoingId;
     }
 
     public String getOrigin() {
@@ -101,6 +83,38 @@ public class Message {
 
     public void setMessage(final String message) {
         this.message = message;
+    }
+
+    public String getNotifyUrl() {
+        return this.notifyUrl;
+    }
+
+    public void setNotifyUrl(final String notifyUrl) {
+        this.notifyUrl = notifyUrl;
+    }
+
+    public String getIncomingUrl() {
+        return this.incomingUrl;
+    }
+
+    public void setIncomingUrl(final String incomingUrl) {
+        this.incomingUrl = incomingUrl;
+    }
+
+    public String getId() {
+        return this.id;
+    }
+
+    public void setId(final String id) {
+        this.id = id;
+    }
+
+    public String getOutgoingId() {
+        return this.outgoingId;
+    }
+
+    public void setOutgoingId(final String outgoingId) {
+        this.outgoingId = outgoingId;
     }
 
     public Boolean getUnicode() {
@@ -151,38 +165,22 @@ public class Message {
         this.totalParts = totalParts;
     }
 
-    public String getNotifyUrl() {
-        return this.notifyUrl;
-    }
-
-    public void setNotifyUrl(final String notifyUrl) {
-        this.notifyUrl = notifyUrl;
-    }
-
-    public String getIncomingUrl() {
-        return this.incomingUrl;
-    }
-
-    public void setIncomingUrl(final String incomingUrl) {
-        this.incomingUrl = incomingUrl;
-    }
-
     @Override
     public String toString() {
         return "Message{" +
-            "id=" + this.id +
-            ", outgoingId=" + this.outgoingId +
-            ", origin='" + this.origin + '\'' +
+            "origin='" + this.origin + '\'' +
             ", destination='" + this.destination + '\'' +
             ", message='" + this.message + '\'' +
+            ", notifyUrl='" + this.notifyUrl + '\'' +
+            ", incomingUrl='" + this.incomingUrl + '\'' +
+            ", id='" + this.id + '\'' +
+            ", outgoingId='" + this.outgoingId + '\'' +
             ", unicode=" + this.unicode +
             ", status=" + this.status +
             ", dateTime=" + this.dateTime +
             ", multipart=" + this.multipart +
             ", partNumber=" + this.partNumber +
             ", totalParts=" + this.totalParts +
-            ", notifyUrl='" + this.notifyUrl + '\'' +
-            ", incomingUrl='" + this.incomingUrl + '\'' +
             '}';
     }
 }

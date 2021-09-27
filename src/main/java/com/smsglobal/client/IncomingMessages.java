@@ -1,8 +1,5 @@
 package com.smsglobal.client;
 
-import javax.xml.bind.annotation.XmlRootElement;
-
-@XmlRootElement(name = "incoming")
 public class IncomingMessages extends AbstractMessages {
 
     @Override

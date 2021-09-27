@@ -1,15 +1,10 @@
 package com.smsglobal.client;
 
-import javax.xml.bind.annotation.XmlAccessType;
-import javax.xml.bind.annotation.XmlAccessorType;
-import javax.xml.bind.annotation.XmlElement;
-import javax.xml.bind.annotation.XmlRootElement;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
-@XmlAccessorType(XmlAccessType.FIELD)
-@XmlRootElement(name = "auto-topup")
 public class AutoTopup {
 
-    @XmlElement(name = "disabled")
+    @JsonProperty("disabled")
     protected Boolean disabled;
 
     public Boolean getDisabled() {

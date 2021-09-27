@@ -1,16 +1,12 @@
 package com.smsglobal.client;
 
-import javax.xml.bind.annotation.XmlAccessType;
-import javax.xml.bind.annotation.XmlAccessorType;
-import javax.xml.bind.annotation.XmlElement;
-import javax.xml.bind.annotation.XmlRootElement;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.List;
 
-@XmlAccessorType(XmlAccessType.FIELD)
-@XmlRootElement(name = "optouts")
 public class Optouts extends AbstractHasOffsetLimitTotal {
 
-    @XmlElement(name = "optout")
+    @JsonProperty("optouts")
     protected List<Optout> optouts;
 
     public List<Optout> getOptouts() {

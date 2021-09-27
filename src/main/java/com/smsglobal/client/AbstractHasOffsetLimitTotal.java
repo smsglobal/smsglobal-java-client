@@ -1,19 +1,16 @@
 package com.smsglobal.client;
 
-import javax.xml.bind.annotation.XmlAccessType;
-import javax.xml.bind.annotation.XmlAccessorType;
-import javax.xml.bind.annotation.XmlElement;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
-@XmlAccessorType(XmlAccessType.FIELD)
 public abstract class AbstractHasOffsetLimitTotal {
 
-    @XmlElement(name = "offset")
+    @JsonProperty("offset")
     protected Integer offset;
 
-    @XmlElement(name = "limit")
+    @JsonProperty("limit")
     protected Integer limit;
 
-    @XmlElement(name = "total")
+    @JsonProperty("total")
     protected Integer total;
 
     public Integer getOffset() {

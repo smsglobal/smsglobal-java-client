@@ -13,13 +13,13 @@ public class RestExample {
         final RestTransport restTransport = new RestTransport(
             "5d8b1fd934a10e45d8b0476e5e9776da", "3a826f541af41127353d7f87ec73d36b", "https://api.smsglobal.com/v2");
         System.out.println(restTransport.getBaseUrl());
-        System.out.println(RestTransport.toXml(message));
+        System.out.println(message);
 
         System.out.println("sendMessage");
         System.out.println(restTransport.sendMessage(message));
 
         System.out.println("getOutgoingMessages");
-        System.out.println(restTransport.getOutgoingMessages(null, null));
+        System.out.println(restTransport.getOutgoingMessages(null, 1000));
 
         System.out.println("getIncomingMessages");
         System.out.println(restTransport.getIncomingMessages(null, null));

@@ -1,39 +1,34 @@
 package com.smsglobal.client;
 
-import javax.xml.bind.annotation.XmlAccessType;
-import javax.xml.bind.annotation.XmlAccessorType;
-import javax.xml.bind.annotation.XmlElement;
-import javax.xml.bind.annotation.XmlRootElement;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
-@XmlAccessorType(XmlAccessType.FIELD)
-@XmlRootElement(name = "contact")
 public class Contact {
 
-    @XmlElement(name = "id")
+    @JsonProperty("id")
     protected String id;
 
-    @XmlElement(name = "name")
+    @JsonProperty("name")
     protected String name;
 
-    @XmlElement(name = "phone")
+    @JsonProperty("phone")
     protected String phone;
 
-    @XmlElement(name = "email")
+    @JsonProperty("email")
     protected String email;
 
-    @XmlElement(name = "address")
+    @JsonProperty("address")
     protected String address;
 
-    @XmlElement(name = "city")
+    @JsonProperty("city")
     protected String city;
 
-    @XmlElement(name = "state")
+    @JsonProperty("state")
     protected String state;
 
-    @XmlElement(name = "postcode")
+    @JsonProperty("postcode")
     protected String postcode;
 
-    @XmlElement(name = "country")
+    @JsonProperty("country")
     protected String country;
 
     public String getId() {

@@ -1,5 +1,7 @@
 package com.smsglobal.transport;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.smsglobal.client.AutoTopup;
 import com.smsglobal.client.Contact;
 import com.smsglobal.client.ContactGroups;
@@ -27,15 +29,8 @@ import org.apache.http.util.EntityUtils;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.JAXBException;
-import javax.xml.bind.Marshaller;
-import javax.xml.bind.Unmarshaller;
-import javax.xml.transform.stream.StreamSource;
 import java.io.Closeable;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.StringWriter;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.InvalidKeyException;
@@ -57,13 +52,19 @@ public class RestTransport implements Closeable {
     private final int port;
     private final String version;
     private final CloseableHttpClient httpClient;
+    private final ObjectMapper objectMapper;
     private final Random random = new Random();
 
-    public RestTransport(final String key, final String secret, final String baseUrl, final CloseableHttpClient httpClient) throws URISyntaxException {
+    public RestTransport(
+        final String key, final String secret, final String baseUrl, final CloseableHttpClient httpClient,
+        final ObjectMapper objectMapper) throws URISyntaxException {
+
         this.key = key;
         this.secret = secret;
-        this.httpClient = httpClient;
         this.baseUrl = baseUrl;
+        this.httpClient = httpClient;
+        this.objectMapper = objectMapper;
+
         final URI uri = new URI(baseUrl);
         this.host = uri.getHost();
         int port = uri.getPort();
@@ -88,23 +89,7 @@ public class RestTransport implements Closeable {
     }
 
     public RestTransport(final String key, final String secret, final String baseUrl) throws URISyntaxException {
-        this(key, secret, baseUrl, HttpClients.createDefault());
-    }
-
-    public static String toXml(final Message message) throws JAXBException {
-        final JAXBContext jaxbContext = JAXBContext.newInstance(message.getClass());
-        final Marshaller marshaller = jaxbContext.createMarshaller();
-        marshaller.setProperty(Marshaller.JAXB_ENCODING, "UTF-8");
-        marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
-        final StringWriter stringWriter = new StringWriter();
-        marshaller.marshal(message, stringWriter);
-        return stringWriter.toString();
-    }
-
-    public static <T> T fromXml(final InputStream inputStream, final Class<T> elementClass) throws JAXBException {
-        final JAXBContext jaxbContext = JAXBContext.newInstance(elementClass);
-        final Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
-        return unmarshaller.unmarshal(new StreamSource(inputStream), elementClass).getValue();
+        this(key, secret, baseUrl, HttpClients.createDefault(), new ObjectMapper().registerModule(new JavaTimeModule()));
     }
 
     public String getHost() {
@@ -156,7 +141,7 @@ public class RestTransport implements Closeable {
     private <T> T get(final String path, final List<NameValuePair> query, final Class<T> responseType) throws Exception {
         final String pathAndQuery = query != null && !query.isEmpty() ? new URIBuilder(path).addParameters(query).toString() : path;
         final HttpGet httpRequest = new HttpGet(this.baseUrl + pathAndQuery);
-        httpRequest.setHeader(HttpHeaders.ACCEPT, "application/xml");
+        httpRequest.setHeader(HttpHeaders.ACCEPT, "application/json");
         httpRequest.setHeader(HttpHeaders.AUTHORIZATION, getAuthHeader(httpRequest.getMethod(), pathAndQuery));
         try (final CloseableHttpResponse httpResponse = this.httpClient.execute(httpRequest)) {
             final StatusLine statusLine = httpResponse.getStatusLine();
@@ -165,7 +150,7 @@ public class RestTransport implements Closeable {
                     statusLine.getStatusCode() + " " + statusLine.getReasonPhrase() + " " + EntityUtils.toString(httpResponse.getEntity()));
             }
 
-            return fromXml(httpResponse.getEntity().getContent(), responseType);
+            return this.objectMapper.readValue(httpResponse.getEntity().getContent(), responseType);
         }
     }
 
@@ -219,13 +204,13 @@ public class RestTransport implements Closeable {
     }
 
     public OutgoingMessages sendMessage(final Message message) throws Exception {
-        final String messageXml = toXml(message);
+        final String messageXml = this.objectMapper.writeValueAsString(message);
         final String path = "/sms";
         final HttpPost httpRequest = new HttpPost(this.baseUrl + path);
-        httpRequest.setHeader(HttpHeaders.ACCEPT, "application/xml");
+        httpRequest.setHeader(HttpHeaders.ACCEPT, "application/json");
         httpRequest.setHeader(HttpHeaders.AUTHORIZATION, getAuthHeader(httpRequest.getMethod(), path));
         final StringEntity entity = new StringEntity(messageXml);
-        entity.setContentType("application/xml");
+        entity.setContentType("application/json");
         httpRequest.setEntity(entity);
         try (final CloseableHttpResponse httpResponse = this.httpClient.execute(httpRequest)) {
             final StatusLine statusLine = httpResponse.getStatusLine();
@@ -234,7 +219,7 @@ public class RestTransport implements Closeable {
                     statusLine.getStatusCode() + " " + statusLine.getReasonPhrase() + " " + EntityUtils.toString(httpResponse.getEntity()));
             }
 
-            return fromXml(httpResponse.getEntity().getContent(), OutgoingMessages.class);
+            return this.objectMapper.readValue(httpResponse.getEntity().getContent(), OutgoingMessages.class);
         }
     }
 

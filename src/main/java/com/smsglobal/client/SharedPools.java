@@ -1,11 +1,26 @@
 package com.smsglobal.client;
 
-import javax.xml.bind.annotation.XmlAccessType;
-import javax.xml.bind.annotation.XmlAccessorType;
-import javax.xml.bind.annotation.XmlRootElement;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
-@XmlAccessorType(XmlAccessType.FIELD)
-@XmlRootElement(name = "sharedPools")
+import java.util.List;
+
 public class SharedPools {
 
+    @JsonProperty("SharedPools")
+    protected List<String> sharedPools;
+
+    public List<String> getSharedPools() {
+        return this.sharedPools;
+    }
+
+    public void setSharedPools(final List<String> sharedPools) {
+        this.sharedPools = sharedPools;
+    }
+
+    @Override
+    public String toString() {
+        return "SharedPools{" +
+            "sharedPools=" + this.sharedPools +
+            '}';
+    }
 }

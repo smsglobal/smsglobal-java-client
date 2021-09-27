@@ -1,18 +1,12 @@
 package com.smsglobal.client;
 
-import javax.xml.bind.annotation.XmlAccessType;
-import javax.xml.bind.annotation.XmlAccessorType;
-import javax.xml.bind.annotation.XmlElement;
-import javax.xml.bind.annotation.XmlElementWrapper;
-import javax.xml.bind.annotation.XmlRootElement;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.List;
 
-@XmlAccessorType(XmlAccessType.FIELD)
-@XmlRootElement(name = "result")
 public class ContactGroups extends AbstractHasOffsetLimitTotal {
 
-    @XmlElementWrapper(name = "groups")
-    @XmlElement(name = "group")
+    @JsonProperty("group")
     protected List<ContactGroup> contactGroups;
 
     public List<ContactGroup> getGroups() {

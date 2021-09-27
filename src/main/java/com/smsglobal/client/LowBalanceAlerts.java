@@ -1,22 +1,18 @@
 package com.smsglobal.client;
 
-import javax.xml.bind.annotation.XmlAccessType;
-import javax.xml.bind.annotation.XmlAccessorType;
-import javax.xml.bind.annotation.XmlElement;
-import javax.xml.bind.annotation.XmlRootElement;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.math.BigDecimal;
 
-@XmlAccessorType(XmlAccessType.FIELD)
-@XmlRootElement(name = "settings")
 public class LowBalanceAlerts {
 
-    @XmlElement(name = "enabled")
+    @JsonProperty("enabled")
     protected Boolean enabled;
 
-    @XmlElement(name = "threshold")
+    @JsonProperty("threshold")
     protected BigDecimal threshold;
 
-    @XmlElement(name = "sendto")
+    @JsonProperty("sendto")
     protected String sendto;
 
     public Boolean getEnabled() {

@@ -1,15 +1,15 @@
 package com.smsglobal.client;
 
-import javax.xml.bind.annotation.XmlEnum;
-import javax.xml.bind.annotation.XmlEnumValue;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
-@XmlEnum
 public enum MessageStatus {
 
-    @XmlEnumValue("delivered") delivered,
-    @XmlEnumValue("sent") sent,
-    @XmlEnumValue("scheduled") scheduled,
-    @XmlEnumValue("noCredits") noCredits,
-    @XmlEnumValue("invalidNumber") invalidNumber,
-    @XmlEnumValue("undelivered") undelivered
+    @JsonProperty("delivered") DELIVERED,
+    @JsonProperty("sent") SENT,
+    @JsonProperty("scheduled") SCHEDULED,
+    @JsonProperty("noCredits") NO_CREDITS,
+    @JsonProperty("invalidNumber") INVALID_NUMBER,
+    @JsonProperty("undelivered") UNDELIVERED,
+    @JsonProperty("rejected") REJECTED,
+    @JsonProperty("Error 1002") ERROR_1002
 }
