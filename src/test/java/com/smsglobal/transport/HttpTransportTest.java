@@ -17,7 +17,7 @@ public class HttpTransportTest {
         final HttpTransport httpTransport = new HttpTransport("jsiuwmkd", "kjas98sk", "https://www.smsglobal.com/http-api.php");
         assertEquals("jsiuwmkd", httpTransport.getUsername());
         assertEquals("kjas98sk", httpTransport.getPassword());
-        assertEquals("https://www.smsglobal.com/http-api.php", httpTransport.getBaseUrl());
+        assertEquals("https://www.smsglobal.com/http-api.php", httpTransport.getUrl());
     }
 
     @Test(expected = URISyntaxException.class)

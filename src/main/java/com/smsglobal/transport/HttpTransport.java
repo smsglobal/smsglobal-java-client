@@ -5,29 +5,37 @@ import org.apache.http.client.fluent.Content;
 import org.apache.http.client.fluent.Request;
 import org.apache.http.client.utils.URIBuilder;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 
 /**
  * HTTP Transport
+ * <a href="https://www.smsglobal.com/http-api/">https://www.smsglobal.com/http-api/</a>
  */
 public class HttpTransport {
 
-    private final String action = "sendsms";
-    private String username;
-    private String password;
-    private String baseUrl;
-    private URI uri;
+    public static final String PRODUCTION_URL = "https://www.smsglobal.com/http-api.php";
 
-    public HttpTransport(final String username, final String password, final String baseUrl) throws URISyntaxException {
+    private static final String SEND_SMS_ACTION = "sendsms";
+
+    private final String username;
+    private final String password;
+    private final String url;
+    private final URI uri;
+
+    public HttpTransport(final String username, final String password, final String url) throws URISyntaxException {
         this.username = username;
         this.password = password;
-        this.baseUrl = baseUrl;
-        this.uri = new URI(baseUrl);
+        this.url = url;
+        this.uri = new URI(url);
     }
 
+    public HttpTransport(final String username, final String password) throws URISyntaxException {
+        this(username, password, PRODUCTION_URL);
+    }
 
-    public String sendMessage(final Message message) throws Exception {
+    public String sendMessage(final Message message) throws IOException {
         final String url = buildUrl(message);
         final Content response = Request.Get(url).execute().returnContent();
         return response.asString();
@@ -38,7 +46,7 @@ public class HttpTransport {
         builder.setScheme(this.uri.getScheme());
         builder.setHost(this.uri.getHost());
         builder.setPath(this.uri.getPath());
-        builder.addParameter("action", this.action);
+        builder.addParameter("action", SEND_SMS_ACTION);
         builder.addParameter("user", this.username);
         builder.addParameter("password", this.password);
         builder.addParameter("from", message.getOrigin());
@@ -48,35 +56,19 @@ public class HttpTransport {
         return builder.toString();
     }
 
-    public String getBaseUrl() {
-        return this.baseUrl;
-    }
-
-    public void setBaseUrl(final String baseUrl) {
-        this.baseUrl = baseUrl;
+    public String getUrl() {
+        return this.url;
     }
 
     public URI getUri() {
         return this.uri;
     }
 
-    public void setUri(final URI uri) {
-        this.uri = uri;
-    }
-
     public String getUsername() {
         return this.username;
     }
 
-    public void setUsername(final String username) {
-        this.username = username;
-    }
-
     public String getPassword() {
         return this.password;
-    }
-
-    public void setPassword(final String password) {
-        this.password = password;
     }
 }

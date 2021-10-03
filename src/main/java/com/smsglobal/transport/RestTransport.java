@@ -18,6 +18,7 @@ import com.smsglobal.client.VerifiedNumbers;
 import org.apache.http.HttpHeaders;
 import org.apache.http.NameValuePair;
 import org.apache.http.StatusLine;
+import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
@@ -43,8 +44,26 @@ import java.util.Random;
 
 /**
  * REST Transport
+ * <a href="https://www.smsglobal.com/rest-api/">https://www.smsglobal.com/rest-api/</a>
  */
 public class RestTransport implements Closeable {
+
+    public static final String PRODUCTION_BASE_URL = "https://api.smsglobal.com/v2";
+
+    public static final int DEFAULT_TIMEOUT_MS = 60 * 1000;
+
+    public static CloseableHttpClient createHttpClient(final int timeoutMs) {
+        final RequestConfig requestConfig = RequestConfig.custom()
+            .setConnectionRequestTimeout(timeoutMs)
+            .setConnectTimeout(timeoutMs)
+            .setSocketTimeout(timeoutMs)
+            .build();
+        return HttpClients.custom().setDefaultRequestConfig(requestConfig).build();
+    }
+
+    public static ObjectMapper createObjectMapper() {
+        return new ObjectMapper().registerModule(new JavaTimeModule());
+    }
 
     private final String key;
     private final String secret;
@@ -89,8 +108,34 @@ public class RestTransport implements Closeable {
         this.version = paths[1];
     }
 
+    public RestTransport(
+        final String key, final String secret, final CloseableHttpClient httpClient, final ObjectMapper objectMapper) throws URISyntaxException {
+
+        this(key, secret, PRODUCTION_BASE_URL, httpClient, objectMapper);
+    }
+
+    public RestTransport(final String key, final String secret, final String baseUrl, final CloseableHttpClient httpClient) throws URISyntaxException {
+        this(key, secret, baseUrl, httpClient, createObjectMapper());
+    }
+
+    public RestTransport(final String key, final String secret, final CloseableHttpClient httpClient) throws URISyntaxException {
+        this(key, secret, PRODUCTION_BASE_URL, httpClient, createObjectMapper());
+    }
+
+    public RestTransport(final String key, final String secret, final String baseUrl, final int timeoutMs) throws URISyntaxException {
+        this(key, secret, baseUrl, createHttpClient(timeoutMs));
+    }
+
+    public RestTransport(final String key, final String secret, final int timeoutMs) throws URISyntaxException {
+        this(key, secret, PRODUCTION_BASE_URL, createHttpClient(timeoutMs));
+    }
+
     public RestTransport(final String key, final String secret, final String baseUrl) throws URISyntaxException {
-        this(key, secret, baseUrl, HttpClients.createDefault(), new ObjectMapper().registerModule(new JavaTimeModule()));
+        this(key, secret, baseUrl, DEFAULT_TIMEOUT_MS);
+    }
+
+    public RestTransport(final String key, final String secret) throws URISyntaxException {
+        this(key, secret, PRODUCTION_BASE_URL);
     }
 
     public String getHost() {
@@ -162,7 +207,7 @@ public class RestTransport implements Closeable {
         final Class<T> responseType) throws HttpStatusCodeException, IOException, URISyntaxException, NoSuchAlgorithmException, InvalidKeyException {
 
         final String pathAndQuery = query != null && !query.isEmpty() ? new URIBuilder(path).addParameters(query).toString() : path;
-        final HttpGet httpRequest = new HttpGet(this.baseUrl + pathAndQuery);
+        final HttpGet httpRequest = new HttpGet(new URI(this.baseUrl + pathAndQuery));
         httpRequest.setHeader(HttpHeaders.ACCEPT, "application/json");
         httpRequest.setHeader(HttpHeaders.AUTHORIZATION, getAuthHeader(httpRequest.getMethod(), pathAndQuery));
         try (final CloseableHttpResponse httpResponse = this.httpClient.execute(httpRequest)) {
@@ -177,6 +222,32 @@ public class RestTransport implements Closeable {
         final Class<T> responseType) throws HttpStatusCodeException, IOException, URISyntaxException, NoSuchAlgorithmException, InvalidKeyException {
 
         return get(path, null, responseType);
+    }
+
+    private <T, U> T post(
+        final String path, final List<NameValuePair> query, final U body,
+        final Class<T> responseType) throws HttpStatusCodeException, IOException, URISyntaxException, NoSuchAlgorithmException, InvalidKeyException {
+
+        final String bodyXml = this.objectMapper.writeValueAsString(body);
+        final String pathAndQuery = query != null && !query.isEmpty() ? new URIBuilder(path).addParameters(query).toString() : path;
+        final HttpPost httpRequest = new HttpPost(new URI(this.baseUrl + pathAndQuery));
+        httpRequest.setHeader(HttpHeaders.ACCEPT, "application/json");
+        httpRequest.setHeader(HttpHeaders.AUTHORIZATION, getAuthHeader(httpRequest.getMethod(), pathAndQuery));
+        final StringEntity entity = new StringEntity(bodyXml);
+        entity.setContentType("application/json");
+        httpRequest.setEntity(entity);
+        try (final CloseableHttpResponse httpResponse = this.httpClient.execute(httpRequest)) {
+            checkResponse(httpResponse);
+
+            return this.objectMapper.readValue(httpResponse.getEntity().getContent(), responseType);
+        }
+    }
+
+    private <T, U> T post(
+        final String path, final U body,
+        final Class<T> responseType) throws HttpStatusCodeException, IOException, URISyntaxException, NoSuchAlgorithmException, InvalidKeyException {
+
+        return post(path, null, body, responseType);
     }
 
     public AutoTopup getAutoTopup() throws HttpStatusCodeException, IOException, URISyntaxException, NoSuchAlgorithmException, InvalidKeyException {
@@ -233,20 +304,10 @@ public class RestTransport implements Closeable {
         return get("/sms", query, OutgoingMessages.class);
     }
 
-    public OutgoingMessages sendMessage(final Message message) throws IOException, NoSuchAlgorithmException, InvalidKeyException, HttpStatusCodeException {
-        final String messageXml = this.objectMapper.writeValueAsString(message);
-        final String path = "/sms";
-        final HttpPost httpRequest = new HttpPost(this.baseUrl + path);
-        httpRequest.setHeader(HttpHeaders.ACCEPT, "application/json");
-        httpRequest.setHeader(HttpHeaders.AUTHORIZATION, getAuthHeader(httpRequest.getMethod(), path));
-        final StringEntity entity = new StringEntity(messageXml);
-        entity.setContentType("application/json");
-        httpRequest.setEntity(entity);
-        try (final CloseableHttpResponse httpResponse = this.httpClient.execute(httpRequest)) {
-            checkResponse(httpResponse);
+    public OutgoingMessages sendMessage(
+        final Message message) throws IOException, NoSuchAlgorithmException, InvalidKeyException, HttpStatusCodeException, URISyntaxException {
 
-            return this.objectMapper.readValue(httpResponse.getEntity().getContent(), OutgoingMessages.class);
-        }
+        return post("/sms", message, OutgoingMessages.class);
     }
 
     public IncomingMessages getIncomingMessages(
