@@ -1,5 +1,6 @@
 package com.smsglobal.client;
 
+import com.fasterxml.jackson.annotation.JsonEnumDefaultValue;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public enum MessageStatus {
@@ -11,5 +12,7 @@ public enum MessageStatus {
     @JsonProperty("invalidNumber") INVALID_NUMBER,
     @JsonProperty("undelivered") UNDELIVERED,
     @JsonProperty("rejected") REJECTED,
-    @JsonProperty("Error 1002") ERROR_1002
+    @JsonProperty("expired") EXPIRED,
+    @JsonProperty("Error 1002") ERROR_1002,
+    @JsonEnumDefaultValue UNKNOWN
 }
