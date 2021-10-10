@@ -16,6 +16,7 @@ import com.smsglobal.client.OutgoingMessages;
 import com.smsglobal.client.SharedPools;
 import com.smsglobal.client.VerifiedNumbers;
 import org.apache.http.HttpHeaders;
+import org.apache.http.HttpStatus;
 import org.apache.http.NameValuePair;
 import org.apache.http.StatusLine;
 import org.apache.http.client.config.RequestConfig;
@@ -188,7 +189,7 @@ public class RestTransport implements Closeable {
     private static void checkResponse(final CloseableHttpResponse httpResponse) throws HttpStatusCodeException {
         final StatusLine statusLine = httpResponse.getStatusLine();
         final int statusCode = statusLine.getStatusCode();
-        if (statusCode == 200) {
+        if (statusCode == HttpStatus.SC_OK) {
             return;
         }
 
@@ -228,12 +229,12 @@ public class RestTransport implements Closeable {
         final String path, final List<NameValuePair> query, final U body,
         final Class<T> responseType) throws HttpStatusCodeException, IOException, URISyntaxException, NoSuchAlgorithmException, InvalidKeyException {
 
-        final String bodyXml = this.objectMapper.writeValueAsString(body);
+        final String bodyJson = this.objectMapper.writeValueAsString(body);
         final String pathAndQuery = query != null && !query.isEmpty() ? new URIBuilder(path).addParameters(query).toString() : path;
         final HttpPost httpRequest = new HttpPost(new URI(this.baseUrl + pathAndQuery));
         httpRequest.setHeader(HttpHeaders.ACCEPT, "application/json");
         httpRequest.setHeader(HttpHeaders.AUTHORIZATION, getAuthHeader(httpRequest.getMethod(), pathAndQuery));
-        final StringEntity entity = new StringEntity(bodyXml);
+        final StringEntity entity = new StringEntity(bodyJson);
         entity.setContentType("application/json");
         httpRequest.setEntity(entity);
         try (final CloseableHttpResponse httpResponse = this.httpClient.execute(httpRequest)) {
