@@ -1,5 +1,6 @@
 package com.smsglobal.transport;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.smsglobal.client.AutoTopup;
@@ -63,7 +64,9 @@ public class RestTransport implements Closeable {
     }
 
     public static ObjectMapper createObjectMapper() {
-        return new ObjectMapper().registerModule(new JavaTimeModule());
+        return new ObjectMapper()
+            .registerModule(new JavaTimeModule())
+            .enable(DeserializationFeature.READ_UNKNOWN_ENUM_VALUES_USING_DEFAULT_VALUE);
     }
 
     private final String key;

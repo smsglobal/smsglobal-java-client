@@ -14,5 +14,6 @@ public enum MessageStatus {
     @JsonProperty("rejected") REJECTED,
     @JsonProperty("expired") EXPIRED,
     @JsonProperty("Error 1002") ERROR_1002,
+    @JsonProperty("Error 255") ERROR_255,
     @JsonEnumDefaultValue UNKNOWN
 }
