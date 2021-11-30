@@ -25,6 +25,7 @@ import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.utils.URIBuilder;
+import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
@@ -235,10 +236,9 @@ public class RestTransport implements Closeable {
         final String bodyJson = this.objectMapper.writeValueAsString(body);
         final String pathAndQuery = query != null && !query.isEmpty() ? new URIBuilder(path).addParameters(query).toString() : path;
         final HttpPost httpRequest = new HttpPost(new URI(this.baseUrl + pathAndQuery));
-        httpRequest.setHeader(HttpHeaders.ACCEPT, "application/json");
+        httpRequest.setHeader(HttpHeaders.ACCEPT, ContentType.APPLICATION_JSON.getMimeType());
         httpRequest.setHeader(HttpHeaders.AUTHORIZATION, getAuthHeader(httpRequest.getMethod(), pathAndQuery));
-        final StringEntity entity = new StringEntity(bodyJson);
-        entity.setContentType("application/json");
+        final StringEntity entity = new StringEntity(bodyJson, ContentType.APPLICATION_JSON);
         httpRequest.setEntity(entity);
         try (final CloseableHttpResponse httpResponse = this.httpClient.execute(httpRequest)) {
             checkResponse(httpResponse);
