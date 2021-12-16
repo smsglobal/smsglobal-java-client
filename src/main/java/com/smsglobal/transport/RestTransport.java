@@ -213,7 +213,7 @@ public class RestTransport implements Closeable {
 
         final String pathAndQuery = query != null && !query.isEmpty() ? new URIBuilder(path).addParameters(query).toString() : path;
         final HttpGet httpRequest = new HttpGet(new URI(this.baseUrl + pathAndQuery));
-        httpRequest.setHeader(HttpHeaders.ACCEPT, "application/json");
+        httpRequest.setHeader(HttpHeaders.ACCEPT, ContentType.APPLICATION_JSON.getMimeType());
         httpRequest.setHeader(HttpHeaders.AUTHORIZATION, getAuthHeader(httpRequest.getMethod(), pathAndQuery));
         try (final CloseableHttpResponse httpResponse = this.httpClient.execute(httpRequest)) {
             checkResponse(httpResponse);
