@@ -16,21 +16,19 @@ import com.smsglobal.client.Optouts;
 import com.smsglobal.client.OutgoingMessages;
 import com.smsglobal.client.SharedPools;
 import com.smsglobal.client.VerifiedNumbers;
-import org.apache.http.HttpHeaders;
-import org.apache.http.HttpStatus;
-import org.apache.http.NameValuePair;
-import org.apache.http.StatusLine;
-import org.apache.http.client.config.RequestConfig;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.utils.URIBuilder;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.message.BasicNameValuePair;
-import org.apache.http.util.EntityUtils;
+import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.client5.http.config.RequestConfig;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.core5.http.*;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
+import org.apache.hc.core5.http.io.entity.StringEntity;
+import org.apache.hc.core5.http.message.BasicNameValuePair;
+import org.apache.hc.core5.http.message.StatusLine;
+import org.apache.hc.core5.net.URIBuilder;
+import org.apache.hc.core5.util.Timeout;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -44,6 +42,7 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 
 /**
  * REST Transport
@@ -55,13 +54,17 @@ public class RestTransport implements Closeable {
 
     public static final int DEFAULT_TIMEOUT_MS = 60 * 1000;
 
-    public static CloseableHttpClient createHttpClient(final int timeoutMs) {
+    public static CloseableHttpClient createHttpClient(final Timeout timeout) {
         final RequestConfig requestConfig = RequestConfig.custom()
-            .setConnectionRequestTimeout(timeoutMs)
-            .setConnectTimeout(timeoutMs)
-            .setSocketTimeout(timeoutMs)
+            .setConnectionRequestTimeout(timeout)
+            .setConnectTimeout(timeout)
+            .setResponseTimeout(timeout)
             .build();
         return HttpClients.custom().setDefaultRequestConfig(requestConfig).build();
+    }
+
+    public static CloseableHttpClient createHttpClient(final int timeoutMs) {
+        return createHttpClient(Timeout.of(timeoutMs, TimeUnit.MILLISECONDS));
     }
 
     public static ObjectMapper createObjectMapper() {
@@ -191,17 +194,16 @@ public class RestTransport implements Closeable {
     }
 
     private static void checkResponse(final CloseableHttpResponse httpResponse) throws HttpStatusCodeException {
-        final StatusLine statusLine = httpResponse.getStatusLine();
-        final int statusCode = statusLine.getStatusCode();
+        final int statusCode = httpResponse.getCode();
         if (statusCode == HttpStatus.SC_OK) {
             return;
         }
 
-        final String reasonPhrase = statusLine.getReasonPhrase();
+        final String reasonPhrase = httpResponse.getReasonPhrase();
         String body = null;
         try {
             body = EntityUtils.toString(httpResponse.getEntity());
-        } catch (final IOException ignored) {
+        } catch (final IOException | ParseException ignored) {
         }
 
         throw new HttpStatusCodeException(statusCode, reasonPhrase, body);

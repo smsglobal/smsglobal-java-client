@@ -1,9 +1,9 @@
 package com.smsglobal.transport;
 
 import com.smsglobal.client.Message;
-import org.apache.http.client.fluent.Content;
-import org.apache.http.client.fluent.Request;
-import org.apache.http.client.utils.URIBuilder;
+import org.apache.hc.client5.http.fluent.Content;
+import org.apache.hc.client5.http.fluent.Request;
+import org.apache.hc.core5.net.URIBuilder;
 
 import java.io.IOException;
 import java.net.URI;
@@ -37,7 +37,7 @@ public class HttpTransport {
 
     public String sendMessage(final Message message) throws IOException {
         final String url = buildUrl(message);
-        final Content response = Request.Get(url).execute().returnContent();
+        final Content response = Request.get(url).execute().returnContent();
         return response.asString();
     }
 

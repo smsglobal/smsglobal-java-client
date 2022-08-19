@@ -30,7 +30,7 @@ public class HttpTransportTest {
         final Message message = new Message("SGTest", "61400000000", "Build url test");
         final HttpTransport httpTransport = new HttpTransport("jsiuwmkd", "kjas98sk", "https://www.smsglobal.com/http-api.php");
         assertEquals(
-            "https://www.smsglobal.com/http-api.php?action=sendsms&user=jsiuwmkd&password=kjas98sk&from=SGTest&to=61400000000&text=Build+url+test",
+            "https://www.smsglobal.com/http-api.php?action=sendsms&user=jsiuwmkd&password=kjas98sk&from=SGTest&to=61400000000&text=Build%20url%20test",
             httpTransport.buildUrl(message));
     }
 }
