@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- JDK 7 or 8
+- JDK 7+
 - Maven 3.x
 
 ## How to build the jar
