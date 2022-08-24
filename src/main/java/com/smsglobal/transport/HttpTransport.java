@@ -1,47 +1,54 @@
 package com.smsglobal.transport;
 
 import com.smsglobal.client.Message;
-import com.smsglobal.client.Transport;
-import org.apache.http.client.fluent.Content;
-import org.apache.http.client.fluent.Request;
-import org.apache.http.client.utils.URIBuilder;
+import org.apache.hc.client5.http.fluent.Content;
+import org.apache.hc.client5.http.fluent.Request;
+import org.apache.hc.core5.net.URIBuilder;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 
 /**
  * HTTP Transport
+ * <a href="https://www.smsglobal.com/http-api/">https://www.smsglobal.com/http-api/</a>
  */
-public class HttpTransport implements Transport {
+public class HttpTransport {
 
-    private String action = "sendsms";
-    private String username;
-    private String password;
-    private String baseUrl;
-    private URI uri;
+    public static final String PRODUCTION_URL = "https://www.smsglobal.com/http-api.php";
 
-    public HttpTransport(String username, String password, String baseUrl) throws URISyntaxException {
+    private static final String SEND_SMS_ACTION = "sendsms";
+
+    private final String username;
+    private final String password;
+    private final String url;
+    private final URI uri;
+
+    public HttpTransport(final String username, final String password, final String url) throws URISyntaxException {
         this.username = username;
         this.password = password;
-        this.baseUrl = baseUrl;
-        this.uri = new URI(baseUrl);
+        this.url = url;
+        this.uri = new URI(url);
     }
 
+    public HttpTransport(final String username, final String password) throws URISyntaxException {
+        this(username, password, PRODUCTION_URL);
+    }
 
-    public String sendMessage(Message message) throws Exception {
-        String url = buildUrl(message);
-        Content response = Request.Get(url).execute().returnContent();
+    public String sendMessage(final Message message) throws IOException {
+        final String url = buildUrl(message);
+        final Content response = Request.get(url).execute().returnContent();
         return response.asString();
     }
 
-    public String buildUrl(Message message) {
-        URIBuilder builder = new URIBuilder();
-        builder.setScheme(uri.getScheme());
-        builder.setHost(uri.getHost());
-        builder.setPath(uri.getPath());
-        builder.addParameter("action", action);
-        builder.addParameter("user", username);
-        builder.addParameter("password", password);
+    public String buildUrl(final Message message) {
+        final URIBuilder builder = new URIBuilder();
+        builder.setScheme(this.uri.getScheme());
+        builder.setHost(this.uri.getHost());
+        builder.setPath(this.uri.getPath());
+        builder.addParameter("action", SEND_SMS_ACTION);
+        builder.addParameter("user", this.username);
+        builder.addParameter("password", this.password);
         builder.addParameter("from", message.getOrigin());
         builder.addParameter("to", message.getDestination());
         builder.addParameter("text", message.getMessage());
@@ -49,35 +56,19 @@ public class HttpTransport implements Transport {
         return builder.toString();
     }
 
-    public String getBaseUrl() {
-        return baseUrl;
-    }
-
-    public void setBaseUrl(String baseUrl) {
-        this.baseUrl = baseUrl;
+    public String getUrl() {
+        return this.url;
     }
 
     public URI getUri() {
-        return uri;
-    }
-
-    public void setUri(URI uri) {
-        this.uri = uri;
+        return this.uri;
     }
 
     public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
+        return this.username;
     }
 
     public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
+        return this.password;
     }
 }

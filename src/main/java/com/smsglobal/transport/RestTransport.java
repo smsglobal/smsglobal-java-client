@@ -1,181 +1,355 @@
 package com.smsglobal.transport;
 
-import com.google.gson.Gson;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.smsglobal.client.AutoTopup;
+import com.smsglobal.client.Contact;
+import com.smsglobal.client.ContactGroups;
+import com.smsglobal.client.CreditBalance;
+import com.smsglobal.client.DedicatedNumbers;
+import com.smsglobal.client.HttpStatusCodeException;
+import com.smsglobal.client.IncomingMessages;
+import com.smsglobal.client.LowBalanceAlerts;
 import com.smsglobal.client.Message;
-import com.smsglobal.client.Transport;
-
-
-import org.apache.http.Header;
-import org.apache.http.HttpHost;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
-import org.apache.http.client.fluent.Content;
-import org.apache.http.client.fluent.Request;
-
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.utils.URIBuilder;
-import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-
+import com.smsglobal.client.Optouts;
+import com.smsglobal.client.OutgoingMessages;
+import com.smsglobal.client.SharedPools;
+import com.smsglobal.client.VerifiedNumbers;
+import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.client5.http.config.RequestConfig;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.HttpHeaders;
+import org.apache.hc.core5.http.HttpStatus;
+import org.apache.hc.core5.http.NameValuePair;
+import org.apache.hc.core5.http.ParseException;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
+import org.apache.hc.core5.http.io.entity.StringEntity;
+import org.apache.hc.core5.http.message.BasicNameValuePair;
+import org.apache.hc.core5.net.URIBuilder;
+import org.apache.hc.core5.util.Timeout;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
-
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.JAXBException;
-import javax.xml.bind.Marshaller;
+import java.io.Closeable;
 import java.io.IOException;
-import java.io.StringWriter;
-
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.List;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 
 /**
  * REST Transport
+ * <a href="https://www.smsglobal.com/rest-api/">https://www.smsglobal.com/rest-api/</a>
  */
-public class RestTransport implements Transport {
+public class RestTransport implements Closeable {
 
-    private String key;
-    private String secret;
-    private String baseUrl;
-    private URI uri;
-    private String version;
-    private String path;
-    private int port;
-    private SSLConnectionSocketFactory sslConnectionSocketFactory;
+    public static final String PRODUCTION_BASE_URL = "https://api.smsglobal.com/v2";
 
+    public static final int DEFAULT_TIMEOUT_MS = 60 * 1000;
 
-    public RestTransport() throws IOException {
-
+    public static CloseableHttpClient createHttpClient(final Timeout timeout) {
+        final RequestConfig requestConfig = RequestConfig.custom()
+            .setConnectionRequestTimeout(timeout)
+            .setConnectTimeout(timeout)
+            .setResponseTimeout(timeout)
+            .build();
+        return HttpClients.custom().setDefaultRequestConfig(requestConfig).build();
     }
 
-    public RestTransport(String key, String secret, String baseUrl, int port,SSLConnectionSocketFactory sslsf) throws URISyntaxException, IOException {
+    public static CloseableHttpClient createHttpClient(final int timeoutMs) {
+        return createHttpClient(Timeout.of(timeoutMs, TimeUnit.MILLISECONDS));
+    }
+
+    public static ObjectMapper createObjectMapper() {
+        return new ObjectMapper()
+            .registerModule(new JavaTimeModule())
+            .enable(DeserializationFeature.READ_UNKNOWN_ENUM_VALUES_USING_DEFAULT_VALUE);
+    }
+
+    private final String key;
+    private final String secret;
+    private final String baseUrl;
+    private final String host;
+    private final int port;
+    private final String version;
+    private final CloseableHttpClient httpClient;
+    private final ObjectMapper objectMapper;
+    private final Random random = new Random();
+
+    public RestTransport(
+        final String key, final String secret, final String baseUrl, final CloseableHttpClient httpClient,
+        final ObjectMapper objectMapper) throws URISyntaxException {
+
         this.key = key;
         this.secret = secret;
+        this.baseUrl = baseUrl;
+        this.httpClient = httpClient;
+        this.objectMapper = objectMapper;
+
+        final URI uri = new URI(baseUrl);
+        this.host = uri.getHost();
+        int port = uri.getPort();
+        if (port <= 0) {
+            final String scheme = uri.getScheme();
+            switch (scheme) {
+                case "http":
+                    port = 80;
+                    break;
+                case "https":
+                    port = 443;
+                    break;
+                default:
+                    throw new IllegalArgumentException();
+            }
+        } else {
+            throw new IllegalArgumentException();
+        }
         this.port = port;
-        this.sslConnectionSocketFactory = sslsf;
-        setBaseUrl(baseUrl);
-
-    }
-
-
-
-    public String sendMessage(Message message) throws Exception {
-        long timestamp = System.currentTimeMillis() / 1000L;
-        int nonce = new Random().nextInt();
-        String mac = getMac("POST", "/sms/", timestamp, nonce);
-        String messageXml = toXml(message);
-
-        CloseableHttpClient httpclient = HttpClients.custom()
-                .setSSLSocketFactory(sslConnectionSocketFactory)
-                .build();
-
-        HttpPost httpPost =  new HttpPost(baseUrl +path);
-        httpPost.setHeader("Accept", "application/xml");
-        httpPost.setHeader("Authorization", getAuthHeader(mac, timestamp, nonce));
-        StringEntity entity =new StringEntity(messageXml);
-        entity.setContentType("application/xml");
-        httpPost.setEntity(entity);
-        CloseableHttpResponse response = httpclient.execute(httpPost);
-        return response.toString();
-    }
-
-    public String toXml(Message message) throws JAXBException {
-        JAXBContext context = JAXBContext.newInstance(Message.class);
-        Marshaller marshaller = context.createMarshaller();
-        marshaller.setProperty(Marshaller.JAXB_ENCODING, "UTF-8");
-        marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
-        StringWriter stringWriter = new StringWriter();
-        marshaller.marshal(message, stringWriter);
-        return stringWriter.toString();
-    }
-
-    public String toJson(Message message) {
-        Gson gson = new Gson();
-        return gson.toJson(message);
-    }
-
-    public void extractVersion() {
-        String[] paths = uri.getPath().split("/");
+        final String[] paths = uri.getPath().split("/");
         this.version = paths[1];
     }
 
-    public String getVersion() {
-        return version;
+    public RestTransport(
+        final String key, final String secret, final CloseableHttpClient httpClient, final ObjectMapper objectMapper) throws URISyntaxException {
+
+        this(key, secret, PRODUCTION_BASE_URL, httpClient, objectMapper);
     }
 
-    public void setVersion(String version) throws URISyntaxException {
-        this.version = version;
-        URIBuilder builder = new URIBuilder(baseUrl).setPath(version);
-        this.baseUrl = builder.toString();
+    public RestTransport(final String key, final String secret, final String baseUrl, final CloseableHttpClient httpClient) throws URISyntaxException {
+        this(key, secret, baseUrl, httpClient, createObjectMapper());
     }
 
-    public String getMac(String httpMethod, String httpPath, long timestamp, int nonce) throws NoSuchAlgorithmException, InvalidKeyException {
-        Mac mac = Mac.getInstance("HmacSHA256");
-        SecretKeySpec secretHash = new SecretKeySpec(secret.getBytes(), "HmacSHA256");
-        mac.init(secretHash);
-        String message = timestamp + "\n" + nonce + "\n" + httpMethod + "\n/" + version + httpPath + "\n" + uri.getHost() + "\n" + port + "\n\n";
-        return Base64.getEncoder().encodeToString((mac.doFinal(message.getBytes())));
+    public RestTransport(final String key, final String secret, final CloseableHttpClient httpClient) throws URISyntaxException {
+        this(key, secret, PRODUCTION_BASE_URL, httpClient, createObjectMapper());
     }
 
-    public String getAuthHeader(String mac, long timestamp, int nonce) {
-        return "MAC id=\"" + key + "\", ts=\"" + timestamp + "\", nonce=\"" + nonce + "\", mac=\"" + mac + "\"";
+    public RestTransport(final String key, final String secret, final String baseUrl, final int timeoutMs) throws URISyntaxException {
+        this(key, secret, baseUrl, createHttpClient(timeoutMs));
     }
 
-    public URI getUri() {
-        return uri;
+    public RestTransport(final String key, final String secret, final int timeoutMs) throws URISyntaxException {
+        this(key, secret, PRODUCTION_BASE_URL, createHttpClient(timeoutMs));
     }
 
-    public void setUri(URI uri) {
-        this.uri = uri;
+    public RestTransport(final String key, final String secret, final String baseUrl) throws URISyntaxException {
+        this(key, secret, baseUrl, DEFAULT_TIMEOUT_MS);
     }
 
-    public String getKey() {
-        return key;
+    public RestTransport(final String key, final String secret) throws URISyntaxException {
+        this(key, secret, PRODUCTION_BASE_URL);
     }
 
-    public void setKey(String key) {
-        this.key = key;
-    }
-
-    public String getSecret() {
-        return secret;
-    }
-
-    public void setSecret(String secret) {
-        this.secret = secret;
-    }
-
-    public String getBaseUrl() {
-        return baseUrl;
-    }
-
-    public void setBaseUrl(String baseUrl) throws URISyntaxException {
-        this.baseUrl = baseUrl;
-        this.uri = new URI(baseUrl);
-        extractVersion();
-    }
-
-    public String getPath() {
-        return path;
-    }
-
-    public void setPath(String path) {
-        this.path = path;
+    public String getHost() {
+        return this.host;
     }
 
     public int getPort() {
-        return port;
+        return this.port;
     }
 
-    public void setPort(int port) {
-        this.port = port;
+    public String getBaseUrl() {
+        return this.baseUrl;
+    }
+
+    public String getVersion() {
+        return this.version;
+    }
+
+    @Override
+    public void close() throws IOException {
+        this.httpClient.close();
+    }
+
+    public String getMac(
+        final String method, final String pathAndQuery, final long timestamp, final int nonce) throws NoSuchAlgorithmException, InvalidKeyException {
+
+        final Mac mac = Mac.getInstance("HmacSHA256");
+        final SecretKeySpec secretHash = new SecretKeySpec(this.secret.getBytes(), "HmacSHA256");
+        mac.init(secretHash);
+        final String message = timestamp + "\n" +
+            nonce + "\n" +
+            method + "\n/" +
+            this.version + pathAndQuery + "\n" +
+            this.host + "\n" +
+            this.port + "\n\n";
+        return Base64.getEncoder().encodeToString(mac.doFinal(message.getBytes()));
+    }
+
+    public String getAuthHeader(final String mac, final long timestamp, final int nonce) {
+        return "MAC id=\"" + this.key + "\", ts=\"" + timestamp + "\", nonce=\"" + nonce + "\", mac=\"" + mac + "\"";
+    }
+
+    public String getAuthHeader(final String method, final String pathAndQuery) throws NoSuchAlgorithmException, InvalidKeyException {
+        final long timestamp = System.currentTimeMillis() / 1000L;
+        final int nonce = this.random.nextInt();
+        final String mac = getMac(method, pathAndQuery, timestamp, nonce);
+        return getAuthHeader(mac, timestamp, nonce);
+    }
+
+    private static void checkResponse(final CloseableHttpResponse httpResponse) throws HttpStatusCodeException {
+        final int statusCode = httpResponse.getCode();
+        if (statusCode == HttpStatus.SC_OK) {
+            return;
+        }
+
+        final String reasonPhrase = httpResponse.getReasonPhrase();
+        String body = null;
+        try {
+            body = EntityUtils.toString(httpResponse.getEntity());
+        } catch (final IOException | ParseException ignored) {
+        }
+
+        throw new HttpStatusCodeException(statusCode, reasonPhrase, body);
+    }
+
+    private <T> T get(
+        final String path, final List<NameValuePair> query,
+        final Class<T> responseType) throws HttpStatusCodeException, IOException, URISyntaxException, NoSuchAlgorithmException, InvalidKeyException {
+
+        final String pathAndQuery = query != null && !query.isEmpty() ? new URIBuilder(path).addParameters(query).toString() : path;
+        final HttpGet httpRequest = new HttpGet(new URI(this.baseUrl + pathAndQuery));
+        httpRequest.setHeader(HttpHeaders.ACCEPT, ContentType.APPLICATION_JSON.getMimeType());
+        httpRequest.setHeader(HttpHeaders.AUTHORIZATION, getAuthHeader(httpRequest.getMethod(), pathAndQuery));
+        try (final CloseableHttpResponse httpResponse = this.httpClient.execute(httpRequest)) {
+            checkResponse(httpResponse);
+
+            return this.objectMapper.readValue(httpResponse.getEntity().getContent(), responseType);
+        }
+    }
+
+    private <T> T get(
+        final String path,
+        final Class<T> responseType) throws HttpStatusCodeException, IOException, URISyntaxException, NoSuchAlgorithmException, InvalidKeyException {
+
+        return get(path, null, responseType);
+    }
+
+    private <T, U> T post(
+        final String path, final List<NameValuePair> query, final U body,
+        final Class<T> responseType) throws HttpStatusCodeException, IOException, URISyntaxException, NoSuchAlgorithmException, InvalidKeyException {
+
+        final String bodyJson = this.objectMapper.writeValueAsString(body);
+        final String pathAndQuery = query != null && !query.isEmpty() ? new URIBuilder(path).addParameters(query).toString() : path;
+        final HttpPost httpRequest = new HttpPost(new URI(this.baseUrl + pathAndQuery));
+        httpRequest.setHeader(HttpHeaders.ACCEPT, ContentType.APPLICATION_JSON.getMimeType());
+        httpRequest.setHeader(HttpHeaders.AUTHORIZATION, getAuthHeader(httpRequest.getMethod(), pathAndQuery));
+        final StringEntity entity = new StringEntity(bodyJson, ContentType.APPLICATION_JSON);
+        httpRequest.setEntity(entity);
+        try (final CloseableHttpResponse httpResponse = this.httpClient.execute(httpRequest)) {
+            checkResponse(httpResponse);
+
+            return this.objectMapper.readValue(httpResponse.getEntity().getContent(), responseType);
+        }
+    }
+
+    private <T, U> T post(
+        final String path, final U body,
+        final Class<T> responseType) throws HttpStatusCodeException, IOException, URISyntaxException, NoSuchAlgorithmException, InvalidKeyException {
+
+        return post(path, null, body, responseType);
+    }
+
+    public AutoTopup getAutoTopup() throws HttpStatusCodeException, IOException, URISyntaxException, NoSuchAlgorithmException, InvalidKeyException {
+        return get("/auto-topup", AutoTopup.class);
+    }
+
+    public ContactGroups getContactGroups(
+        final Integer offset,
+        final Integer limit) throws HttpStatusCodeException, IOException, URISyntaxException, NoSuchAlgorithmException, InvalidKeyException {
+
+        final List<NameValuePair> query = offset == null && limit == null ? null : new ArrayList<>(2);
+        if (offset != null) {
+            query.add(new BasicNameValuePair("offset", offset.toString()));
+        }
+        if (limit != null) {
+            query.add(new BasicNameValuePair("limit", limit.toString()));
+        }
+        return get("/group", query, ContactGroups.class);
+    }
+
+    public DedicatedNumbers getDedicatedNumbers() throws HttpStatusCodeException, IOException, URISyntaxException, NoSuchAlgorithmException, InvalidKeyException {
+        return get("/dedicated-number", DedicatedNumbers.class);
+    }
+
+    public Optouts getOptOuts(
+        final Integer offset,
+        final Integer limit) throws HttpStatusCodeException, IOException, URISyntaxException, NoSuchAlgorithmException, InvalidKeyException {
+
+        final List<NameValuePair> query = offset == null && limit == null ? null : new ArrayList<>(2);
+        if (offset != null) {
+            query.add(new BasicNameValuePair("offset", offset.toString()));
+        }
+        if (limit != null) {
+            query.add(new BasicNameValuePair("limit", limit.toString()));
+        }
+        return get("/opt-outs", query, Optouts.class);
+    }
+
+    public SharedPools getSharedPools() throws HttpStatusCodeException, IOException, URISyntaxException, NoSuchAlgorithmException, InvalidKeyException {
+        return get("/sharedpool", SharedPools.class);
+    }
+
+    public OutgoingMessages getOutgoingMessages(
+        final Integer offset,
+        final Integer limit) throws HttpStatusCodeException, IOException, URISyntaxException, NoSuchAlgorithmException, InvalidKeyException {
+
+        final List<NameValuePair> query = offset == null && limit == null ? null : new ArrayList<>(2);
+        if (offset != null) {
+            query.add(new BasicNameValuePair("offset", offset.toString()));
+        }
+        if (limit != null) {
+            query.add(new BasicNameValuePair("limit", limit.toString()));
+        }
+        return get("/sms", query, OutgoingMessages.class);
+    }
+
+    public OutgoingMessages sendMessage(
+        final Message message) throws IOException, NoSuchAlgorithmException, InvalidKeyException, HttpStatusCodeException, URISyntaxException {
+
+        return post("/sms", message, OutgoingMessages.class);
+    }
+
+    public IncomingMessages getIncomingMessages(
+        final Integer offset,
+        final Integer limit) throws HttpStatusCodeException, IOException, URISyntaxException, NoSuchAlgorithmException, InvalidKeyException {
+
+        final List<NameValuePair> query = offset == null && limit == null ? null : new ArrayList<>(2);
+        if (offset != null) {
+            query.add(new BasicNameValuePair("offset", offset.toString()));
+        }
+        if (limit != null) {
+            query.add(new BasicNameValuePair("limit", limit.toString()));
+        }
+        return get("/sms-incoming", query, IncomingMessages.class);
+    }
+
+    public Contact getUserBillingDetails() throws HttpStatusCodeException, IOException, URISyntaxException, NoSuchAlgorithmException, InvalidKeyException {
+        return get("/user/billing-details", Contact.class);
+    }
+
+    public Contact getUserContactDetails() throws HttpStatusCodeException, IOException, URISyntaxException, NoSuchAlgorithmException, InvalidKeyException {
+        return get("/user/contact-details", Contact.class);
+    }
+
+    public CreditBalance getUserCreditBalance() throws HttpStatusCodeException, IOException, URISyntaxException, NoSuchAlgorithmException, InvalidKeyException {
+        return get("/user/credit-balance", CreditBalance.class);
+    }
+
+    public LowBalanceAlerts getUserLowBalanceAlerts() throws HttpStatusCodeException, IOException, URISyntaxException, NoSuchAlgorithmException, InvalidKeyException {
+        return get("/user/low-balance-alerts", LowBalanceAlerts.class);
+    }
+
+    public VerifiedNumbers getUserVerifiedNumbers() throws HttpStatusCodeException, IOException, URISyntaxException, NoSuchAlgorithmException, InvalidKeyException {
+        return get("/user/verified-numbers", VerifiedNumbers.class);
     }
 }
